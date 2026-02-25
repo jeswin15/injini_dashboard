@@ -395,7 +395,8 @@ export const fetchFellowsData = async (useMock = false): Promise<{ fellows: Fell
                     'Schools reached',
                     'Total Schools',
                     'Number schools/learning institutions EdTech solution is being tested in',
-                    'Number of schools/learning institutions where EdTech solutions are being tested'
+                    'Number of schools/learning institutions where EdTech solutions are being tested',
+                    'Total number of schools solution being tested in'
                 ]);
                 const schools = (schoolRes.value as number) || 0;
 
@@ -404,11 +405,17 @@ export const fetchFellowsData = async (useMock = false): Promise<{ fellows: Fell
                     'Quintile 1-3 schools',
                     'Quintile 1-3 Schools Students subscriptions',
                     'Number of Quintile 1-3 schools',
-                    'Number of Quintile 1 - 3 schools'
+                    'Number of Quintile 1 - 3 schools',
+                    'Number Quintile 1 - 3 schools ',
+                    'Subscription - Q1-3 schools'
                 ]);
                 const q1_3_schools = (q13Res.value as number) || 0;
 
-                const saSchoolsRes = getSmartValue(record, ['Number of South African schools']);
+                const saSchoolsRes = getSmartValue(record, [
+                    'Number of South African schools',
+                    'Number of South African schools solution is being used/tested in',
+                    'Subscription - South African schools'
+                ]);
                 const saSchools = (saSchoolsRes.value as number) || 0;
 
                 // Demographics (Often percentage or raw number? Assuming Raw Number for now based on context)
