@@ -66,6 +66,7 @@ export interface FellowData {
         saSchools: number;
         femaleLearners: number;
         ruralLearners: number;
+        disabilityLearners: number;
     }[];
     hasRedFlag: boolean;
 }

@@ -30,13 +30,14 @@ const calculateJobsPerFellow = (data: FellowData['data']) => {
     const newJobsCreated = current.totalJobs - first.totalJobs;
     const percentChange = first.totalJobs > 0 ? (newJobsCreated / first.totalJobs) * 100 : 0;
     const newFemaleJobs = current.femaleJobs - first.femaleJobs;
+    const newYouthJobs = current.youthJobs - first.youthJobs;
 
     return {
         currentTotalJobs: current.totalJobs,
         newJobsCreated,
         percentChange,
         newFemaleJobs,
-        youthJobs: current.youthJobs
+        youthJobs: newYouthJobs
     };
 };
 
@@ -144,6 +145,7 @@ export const CohortView: React.FC<CohortViewProps> = ({ cohortName }) => {
     let totalCurrentLearners = 0;
     let totalFemaleLearners = 0;
     let totalRuralLearners = 0;
+    let totalDisabilityLearners = 0;
 
     fellows.forEach(f => {
         if (f.data.length > 0) {
@@ -151,12 +153,13 @@ export const CohortView: React.FC<CohortViewProps> = ({ cohortName }) => {
             totalCurrentLearners += curr.learners || 0;
             totalFemaleLearners += curr.femaleLearners || 0;
             totalRuralLearners += curr.ruralLearners || 0;
+            totalDisabilityLearners += curr.disabilityLearners || 0;
         }
     });
 
     const femalePct = totalCurrentLearners > 0 ? Math.round((totalFemaleLearners / totalCurrentLearners) * 100) : 0;
     const ruralPct = totalCurrentLearners > 0 ? Math.round((totalRuralLearners / totalCurrentLearners) * 100) : 0;
-    const disabilityPct = 0; // Not tracked in Airtable yet
+    const disabilityPct = totalCurrentLearners > 0 ? Math.round((totalDisabilityLearners / totalCurrentLearners) * 100) : 0;
 
     return (
         <div className="space-y-12">
@@ -369,18 +372,20 @@ export const CohortView: React.FC<CohortViewProps> = ({ cohortName }) => {
                             {fellows.map((f, i) => {
                                 let fCount = 0;
                                 let rCount = 0;
+                                let dCount = 0;
                                 // Disaggregation data is often scattered. We take the latest month data.
                                 if (f.data.length > 0) {
                                     const curr = f.data[f.data.length - 1];
                                     fCount = curr.femaleLearners || 0;
                                     rCount = curr.ruralLearners || 0;
+                                    dCount = curr.disabilityLearners || 0;
                                 }
                                 return (
                                     <tr key={i} className="hover:bg-gray-50">
                                         <td className="p-4 font-medium">{f.companyName}</td>
                                         <td className="p-4 text-right">{fCount.toLocaleString()}</td>
                                         <td className="p-4 text-right">{rCount.toLocaleString()}</td>
-                                        <td className="p-4 text-right text-gray-400">N/A</td> {/* Airtable doesn't track disability yet */}
+                                        <td className="p-4 text-right">{dCount.toLocaleString()}</td>
                                     </tr>
                                 );
                             })}

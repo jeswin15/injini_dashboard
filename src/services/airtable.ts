@@ -410,8 +410,11 @@ export const fetchFellowsData = async (useMock = false): Promise<{ fellows: Fell
                 const femaleLearnRes = getSmartValue(record, ['Female learners', 'Female Users', 'Total Subscribers - Female']);
                 const femaleLearners = (femaleLearnRes.value as number) || 0;
 
-                const ruralRes = getSmartValue(record, ['Rural learners', 'Rural Users']);
+                const ruralRes = getSmartValue(record, ['Rural learners', 'Rural Users', 'Total Subscribers - Rural']);
                 const ruralLearners = (ruralRes.value as number) || 0;
+
+                const disabilityRes = getSmartValue(record, ['Learners with disability', 'Users with disability', 'Disability', 'Total Subscribers - Disability']);
+                const disabilityLearners = (disabilityRes.value as number) || 0;
 
                 fellowsMap[companyName].data.push({
                     month,
@@ -431,7 +434,8 @@ export const fetchFellowsData = async (useMock = false): Promise<{ fellows: Fell
                     q1_3_schools,
                     saSchools,
                     femaleLearners,
-                    ruralLearners
+                    ruralLearners,
+                    disabilityLearners
                 });
 
                 fellowsMap[companyName].monthsOfData += 1;

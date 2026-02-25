@@ -63,7 +63,7 @@ export const OverallView: React.FC = () => {
                 currentTotalJobs += current.totalJobs;
                 newJobsCreated += (current.totalJobs - first.totalJobs);
                 newFemaleJobs += (current.femaleJobs - first.femaleJobs);
-                youthJobs += current.youthJobs;
+                youthJobs += (current.youthJobs - first.youthJobs);
                 totalInitialJobs += first.totalJobs;
 
                 totalLearners += current.learners || 0;
