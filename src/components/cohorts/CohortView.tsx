@@ -50,12 +50,23 @@ const calculateReachData = (fellows: FellowData[]) => {
     let q1_3_schools = 0;
 
     fellows.forEach(f => {
+        let maxLearners = 0;
+        let maxEducators = 0;
+        let maxSaSchools = 0;
+        let maxQ13Schools = 0;
+
         if (f.data.length > 0) {
-            const current = f.data[f.data.length - 1];
-            totalLearners += current.learners || 0;
-            totalEducators += current.educators || 0;
-            saSchools += current.saSchools || 0;
-            q1_3_schools += current.q1_3_schools || 0;
+            f.data.forEach(d => {
+                if ((d.learners || 0) > maxLearners) maxLearners = d.learners;
+                if ((d.educators || 0) > maxEducators) maxEducators = d.educators;
+                if ((d.saSchools || 0) > maxSaSchools) maxSaSchools = d.saSchools;
+                if ((d.q1_3_schools || 0) > maxQ13Schools) maxQ13Schools = d.q1_3_schools;
+            });
+
+            totalLearners += maxLearners;
+            totalEducators += maxEducators;
+            saSchools += maxSaSchools;
+            q1_3_schools += maxQ13Schools;
 
             const newL = f.data.reduce((acc, d) => acc + (d.newLearners || 0), 0);
             const newE = f.data.reduce((acc, d) => acc + (d.newEducators || 0), 0);
@@ -149,11 +160,22 @@ export const CohortView: React.FC<CohortViewProps> = ({ cohortName }) => {
 
     fellows.forEach(f => {
         if (f.data.length > 0) {
-            const curr = f.data[f.data.length - 1];
-            totalCurrentLearners += curr.learners || 0;
-            totalFemaleLearners += curr.femaleLearners || 0;
-            totalRuralLearners += curr.ruralLearners || 0;
-            totalDisabilityLearners += curr.disabilityLearners || 0;
+            let maxLearners = 0;
+            let maxFemale = 0;
+            let maxRural = 0;
+            let maxDisability = 0;
+
+            f.data.forEach(d => {
+                if ((d.learners || 0) > maxLearners) maxLearners = d.learners;
+                if ((d.femaleLearners || 0) > maxFemale) maxFemale = d.femaleLearners;
+                if ((d.ruralLearners || 0) > maxRural) maxRural = d.ruralLearners;
+                if ((d.disabilityLearners || 0) > maxDisability) maxDisability = d.disabilityLearners;
+            });
+
+            totalCurrentLearners += maxLearners;
+            totalFemaleLearners += maxFemale;
+            totalRuralLearners += maxRural;
+            totalDisabilityLearners += maxDisability;
         }
     });
 
@@ -373,12 +395,13 @@ export const CohortView: React.FC<CohortViewProps> = ({ cohortName }) => {
                                 let fCount = 0;
                                 let rCount = 0;
                                 let dCount = 0;
-                                // Disaggregation data is often scattered. We take the latest month data.
+                                // Disaggregation data is often scattered. We take the maximum reported ever.
                                 if (f.data.length > 0) {
-                                    const curr = f.data[f.data.length - 1];
-                                    fCount = curr.femaleLearners || 0;
-                                    rCount = curr.ruralLearners || 0;
-                                    dCount = curr.disabilityLearners || 0;
+                                    f.data.forEach(d => {
+                                        if ((d.femaleLearners || 0) > fCount) fCount = d.femaleLearners;
+                                        if ((d.ruralLearners || 0) > rCount) rCount = d.ruralLearners;
+                                        if ((d.disabilityLearners || 0) > dCount) dCount = d.disabilityLearners;
+                                    });
                                 }
                                 return (
                                     <tr key={i} className="hover:bg-gray-50">

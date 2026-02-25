@@ -35,32 +35,43 @@ if (!API_KEY || !BASE_ID_1) {
 }
 
 Airtable.configure({ apiKey: API_KEY });
-async function checkTable(base, tableName, cohortName, limit = 1) {
+let grandTotalSASchools = 0;
+let grandTotalQ13Schools = 0;
+
+const cohortTotals = {
+    'Cohort 1': { sa: 0, q13: 0 },
+    'Cohort 2': { sa: 0, q13: 0 },
+    'Cohort 3': { sa: 0, q13: 0 },
+    'Cohort 4': { sa: 0, q13: 0 },
+};
+
+async function checkTable(base, tableName, cohortName, limit = 100) {
     try {
-        console.log(`\nChecking table: "${tableName}" in ${cohortName}...`);
         const records = await base(tableName).select({ maxRecords: limit }).firstPage();
-        console.log(`✅ Success! Table "${tableName}" is accessible. Found ${records.length} records.`);
         if (records.length > 0) {
             records.forEach((r, i) => {
-                const filteredObj = {};
-                for (let key in r.fields) {
-                    if (key.toLowerCase().includes('school') || key.toLowerCase().includes('rural') || key.toLowerCase().includes('female') || key.toLowerCase().includes('disability') || key.toLowerCase().includes('q1')) {
-                        filteredObj[key] = r.fields[key];
-                    }
-                }
-                if (Object.keys(filteredObj).length > 0) {
-                    console.log(`--- Record ${i + 1} Matching Fields ---`, filteredObj);
+                const saSchools = r.get('Number of South African schools') ||
+                    r.get('Number of South African schools solution is being used/tested in') ||
+                    r.get('Subscription - South African schools') || 0;
+
+                const q13Schools = r.get('Q1-3 Schools') ||
+                    r.get('Quintile 1-3 schools') ||
+                    r.get('Quintile 1-3 Schools Students subscriptions') ||
+                    r.get('Number of Quintile 1-3 schools') ||
+                    r.get('Number of Quintile 1 - 3 schools') ||
+                    r.get('Number Quintile 1 - 3 schools ') ||
+                    r.get('Subscription - Q1-3 schools') || 0;
+
+                grandTotalSASchools += saSchools;
+                grandTotalQ13Schools += q13Schools;
+                if (cohortTotals[cohortName]) {
+                    cohortTotals[cohortName].sa += saSchools;
+                    cohortTotals[cohortName].q13 += q13Schools;
                 }
             });
-            // Print all keys of first record just to be sure
-            console.log("\nAll raw keys (Record 1):", Object.keys(records[0].fields).join(', '));
         }
     } catch (error) {
-        if (error.error === 'NOT_FOUND') {
-            console.log(`❌ Table "${tableName}" NOT FOUND in ${cohortName}.`);
-        } else {
-            console.error(`❌ Error accessing "${tableName}" in ${cohortName}:`, error.message || error);
-        }
+        // ignore not found
     }
 }
 
@@ -75,10 +86,22 @@ async function run() {
     for (const [cohortName, baseId] of Object.entries(bases)) {
         if (!baseId) continue;
         const base = Airtable.base(baseId);
-        await checkTable(base, 'Monthly reporting', cohortName, 5);
-        await checkTable(base, 'Needs Assessment', cohortName, 5);
-        await checkTable(base, 'Post Program Reporting', cohortName, 5);
+        await checkTable(base, 'Monthly reporting', cohortName, 100);
+        await checkTable(base, 'Needs Assessment', cohortName, 100);
+        await checkTable(base, 'Post Program Reporting', cohortName, 100);
+        await checkTable(base, 'Post-Program Reporting', cohortName, 100);
     }
+
+    console.log("---- DATABASE TOTALS BY COHORT ----");
+    for (const cohort of Object.keys(cohortTotals)) {
+        console.log(`\n${cohort}:`);
+        console.log(`  South African Schools: ${cohortTotals[cohort].sa}`);
+        console.log(`  Quintile 1-3 Schools: ${cohortTotals[cohort].q13}`);
+    }
+
+    console.log("\n---- GRAND TOTALS ----");
+    console.log("Total South African Schools:", grandTotalSASchools);
+    console.log("Total Quintile 1-3 Schools:", grandTotalQ13Schools);
 }
 
 run();

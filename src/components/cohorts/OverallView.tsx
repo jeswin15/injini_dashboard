@@ -66,11 +66,26 @@ export const OverallView: React.FC = () => {
                 youthJobs += (current.youthJobs - first.youthJobs);
                 totalInitialJobs += first.totalJobs;
 
-                totalLearners += current.learners || 0;
-                totalEducators += current.educators || 0;
-                saSchools += current.saSchools || 0;
-                q1_3_schools += current.q1_3_schools || 0;
-                totalSubscribers += current.totalSubscribers || 0;
+                // Find max ever reported snapshot for these cumulative metrics across all data points
+                let maxLearners = 0;
+                let maxEducators = 0;
+                let maxSaSchools = 0;
+                let maxQ13Schools = 0;
+                let maxSubscribers = 0;
+
+                f.data.forEach(d => {
+                    if ((d.learners || 0) > maxLearners) maxLearners = d.learners;
+                    if ((d.educators || 0) > maxEducators) maxEducators = d.educators;
+                    if ((d.saSchools || 0) > maxSaSchools) maxSaSchools = d.saSchools;
+                    if ((d.q1_3_schools || 0) > maxQ13Schools) maxQ13Schools = d.q1_3_schools;
+                    if ((d.totalSubscribers || 0) > maxSubscribers) maxSubscribers = d.totalSubscribers;
+                });
+
+                totalLearners += maxLearners;
+                totalEducators += maxEducators;
+                saSchools += maxSaSchools;
+                q1_3_schools += maxQ13Schools;
+                totalSubscribers += maxSubscribers;
 
                 newLearners += f.data.reduce((acc, d) => acc + (d.newLearners || 0), 0);
                 newEducators += f.data.reduce((acc, d) => acc + (d.newEducators || 0), 0);
