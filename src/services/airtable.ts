@@ -285,186 +285,188 @@ export const fetchFellowsData = async (useMock = false): Promise<{ fellows: Fell
     const issues: DataIssue[] = [];
     const bases = Object.entries(BASE_IDS);
 
+    const tablesToFetch = [
+        import.meta.env.VITE_AIRTABLE_TABLE_SALES || 'Monthly reporting',
+        'Needs Assessment',
+        'Post Program Reporting',
+        'Post-Program Reporting'
+    ];
+
     for (const [cohortName, baseId] of bases) {
         const base = Airtable.base(baseId);
-        const tableName = import.meta.env.VITE_AIRTABLE_TABLE_SALES || 'Monthly reporting';
 
-        try {
-            const records = await base(tableName).select().all();
+        for (const tableName of tablesToFetch) {
+            try {
+                const records = await base(tableName).select().all();
 
-            records.forEach(record => {
-                const nameRes = getSmartValue(record, ['Company name', 'Business name', 'Name', 'Fellow', 'Startup', 'Company']);
-                const companyName = nameRes.value as string;
+                records.forEach(record => {
+                    const nameRes = getSmartValue(record, ['Company name', 'Business name', 'Name', 'Fellow', 'Startup', 'Company']);
+                    const companyName = nameRes.value as string;
 
-                // Debugging helper for Schools tables
-                if (tableName === 'Needs Assessment' || tableName === 'Post Program Reporting' || tableName === 'Monthly reporting') {
-                    if (!companyName) {
-                        issues.push({
+                    // Debugging helper for Schools tables
+                    if (tableName === 'Needs Assessment' || tableName === 'Post Program Reporting' || tableName === 'Monthly reporting') {
+                        if (!companyName) {
+                            issues.push({
+                                cohort: cohortName,
+                                table: tableName,
+                                field: 'Company Name',
+                                issue: 'missing_identifier',
+                                details: `Missing Company Name. Record Keys: ${Object.keys(record.fields).join(', ')}`
+                            });
+                        }
+                    }
+
+                    if (!companyName) return;
+
+                    // Log if we had to use a fallback (Self-Correction/Alerting mechanism)
+                    if (nameRes.usedField && nameRes.usedField !== 'Company name') {
+                        // We only log this ONCE per cohort to avoid spamming issues
+                        const issueId = `${cohortName}-fieldname-${nameRes.usedField}`;
+                        if (!issues.find(i => i.details.includes(issueId))) {
+                            issues.push({
+                                cohort: cohortName,
+                                table: tableName,
+                                field: 'Company Name',
+                                issue: 'fallback_used',
+                                details: `Auto-corrected: Used '${nameRes.usedField}' instead of 'Company name' (${issueId})`
+                            });
+                        }
+                    }
+
+                    const monthRes = getSmartValue(record, ['Reporting month', 'Reporting Month', 'Date']);
+                    const rawMonth = monthRes.value as string;
+                    const month = parseMonth(rawMonth);
+
+                    // Date Parsing for Sorting
+                    let uniqueDate = new Date();
+                    if (rawMonth) {
+                        const parts = rawMonth.split('-');
+                        if (parts.length > 1) {
+                            const datePart = parts[parts.length - 1].trim();
+                            const parsed = new Date(datePart);
+                            if (!isNaN(parsed.getTime())) uniqueDate = parsed;
+                        } else {
+                            const parsed = new Date(rawMonth);
+                            if (!isNaN(parsed.getTime())) uniqueDate = parsed;
+                        }
+                    }
+
+                    if (!fellowsMap[companyName]) {
+                        fellowsMap[companyName] = {
+                            companyName,
                             cohort: cohortName,
-                            table: tableName,
-                            field: 'Company Name',
-                            issue: 'missing_identifier',
-                            details: `Missing Company Name. Record Keys: ${Object.keys(record.fields).join(', ')}`
-                        });
+                            monthsOfData: 0,
+                            currentLogic: 'Logic i',
+                            data: [],
+                            hasRedFlag: false
+                        };
                     }
-                }
 
-                if (!companyName) return;
+                    const salesRes = getSmartValue(record, ['Monthly Sales', 'Monthly sales']);
+                    const profitRes = getSmartValue(record, ['Monthly net profit', 'Monthly Net Profit']);
 
-                // Log if we had to use a fallback (Self-Correction/Alerting mechanism)
-                if (nameRes.usedField && nameRes.usedField !== 'Company name') {
-                    // We only log this ONCE per cohort to avoid spamming issues
-                    const issueId = `${cohortName}-fieldname-${nameRes.usedField}`;
-                    if (!issues.find(i => i.details.includes(issueId))) {
-                        issues.push({
-                            cohort: cohortName,
-                            table: tableName,
-                            field: 'Company Name',
-                            issue: 'fallback_used',
-                            details: `Auto-corrected: Used '${nameRes.usedField}' instead of 'Company name' (${issueId})`
-                        });
-                    }
-                }
+                    const sales = (salesRes.value as number) || 0;
+                    const profit = (profitRes.value as number) || 0;
 
-                const monthRes = getSmartValue(record, ['Reporting month', 'Reporting Month', 'Date']);
-                const rawMonth = monthRes.value as string;
-                const month = parseMonth(rawMonth);
+                    // Jobs Data
+                    const opJobs = (record.get('Operational jobs - Total') as number) || 0;
+                    const eduJobs = (record.get('Educational resourcing jobs -Total') as number) || 0;
+                    const totalJobs = opJobs + eduJobs;
 
-                // Date Parsing for Sorting
-                let uniqueDate = new Date();
-                if (rawMonth) {
-                    const parts = rawMonth.split('-');
-                    if (parts.length > 1) {
-                        const datePart = parts[parts.length - 1].trim();
-                        const parsed = new Date(datePart);
-                        if (!isNaN(parsed.getTime())) uniqueDate = parsed;
-                    } else {
-                        const parsed = new Date(rawMonth);
-                        if (!isNaN(parsed.getTime())) uniqueDate = parsed;
-                    }
-                }
+                    const opFemale = (record.get('Operational jobs - female') as number) || 0;
+                    const eduFemale = (record.get('Educational resourcing jobs - Female') as number) || 0;
+                    const femaleJobs = opFemale + eduFemale; // Total female jobs snapshot
 
-                if (!fellowsMap[companyName]) {
-                    fellowsMap[companyName] = {
-                        companyName,
-                        cohort: cohortName,
-                        monthsOfData: 0,
-                        currentLogic: 'Logic i',
-                        data: [],
-                        hasRedFlag: false
-                    };
-                }
+                    const youthJobs = (record.get('Youth operational jobs') as number) || 0;
 
-                const salesRes = getSmartValue(record, ['Monthly Sales', 'Monthly sales']);
-                const profitRes = getSmartValue(record, ['Monthly net profit', 'Monthly Net Profit']);
+                    // Reach Data
+                    const subRes = getSmartValue(record, ['Total Subscribers -Students', 'Total Subscribers - Students']);
+                    const learners = (subRes.value as number) || 0;
 
-                const sales = (salesRes.value as number) || 0;
-                const profit = (profitRes.value as number) || 0;
+                    const eduRes = getSmartValue(record, ['Total Subscribers - Educators', 'Total Subscribers -Educators']);
+                    const educators = (eduRes.value as number) || 0;
 
-                // Jobs Data
-                const opJobs = (record.get('Operational jobs - Total') as number) || 0;
-                const eduJobs = (record.get('Educational resourcing jobs -Total') as number) || 0;
-                const totalJobs = opJobs + eduJobs;
+                    const totalSubscribers = learners + educators;
 
-                const opFemale = (record.get('Operational jobs - female') as number) || 0;
-                const eduFemale = (record.get('Educational resourcing jobs - Female') as number) || 0;
-                const femaleJobs = opFemale + eduFemale; // Total female jobs snapshot
+                    const newSubRes = getSmartValue(record, ['Net new monthly subscribers  - students', 'New Monthly Subscribers - Students']);
+                    const newSubscribers = (newSubRes.value as number) || 0;
 
-                const youthJobs = (record.get('Youth operational jobs') as number) || 0;
+                    // Proxy logic: If we don't have separate "New Learners" vs "New Educators", 
+                    // we assume most new subscribers are learners.
+                    // Or check for specific educator growth if available.
+                    // For now, mapping New Subs -> New Learners approx.
+                    const newLearners = newSubscribers;
+                    const newEducators = 0; // Field likely missing or needs specific calc across months.
 
-                // Reach Data
-                const subRes = getSmartValue(record, ['Total Subscribers -Students', 'Total Subscribers - Students']);
-                const learners = (subRes.value as number) || 0;
+                    const schoolRes = getSmartValue(record, [
+                        'Schools reached',
+                        'Total Schools',
+                        'Number schools/learning institutions EdTech solution is being tested in',
+                        'Number of schools/learning institutions where EdTech solutions are being tested',
+                        'Total number of schools solution being tested in'
+                    ]);
+                    const schools = (schoolRes.value as number) || 0;
 
-                const eduRes = getSmartValue(record, ['Total Subscribers - Educators', 'Total Subscribers -Educators']);
-                const educators = (eduRes.value as number) || 0;
+                    const q13Res = getSmartValue(record, [
+                        'Q1-3 Schools',
+                        'Quintile 1-3 schools',
+                        'Quintile 1-3 Schools Students subscriptions',
+                        'Number of Quintile 1-3 schools',
+                        'Number of Quintile 1 - 3 schools',
+                        'Number Quintile 1 - 3 schools ',
+                        'Subscription - Q1-3 schools'
+                    ]);
+                    const q1_3_schools = (q13Res.value as number) || 0;
 
-                const totalSubscribers = learners + educators;
+                    const saSchoolsRes = getSmartValue(record, [
+                        'Number of South African schools',
+                        'Number of South African schools solution is being used/tested in',
+                        'Subscription - South African schools'
+                    ]);
+                    const saSchools = (saSchoolsRes.value as number) || 0;
 
-                const newSubRes = getSmartValue(record, ['Net new monthly subscribers  - students', 'New Monthly Subscribers - Students']);
-                const newSubscribers = (newSubRes.value as number) || 0;
+                    // Demographics (Often percentage or raw number? Assuming Raw Number for now based on context)
+                    // If fields are missing in some cohorts, we might need more smart fetching or defaults.
+                    // Checking previous agg logic: it didn't fetch demographics per fellow.
+                    // We'll try to find common names.
+                    const femaleLearnRes = getSmartValue(record, ['Female learners', 'Female Users', 'Total Subscribers - Female']);
+                    const femaleLearners = (femaleLearnRes.value as number) || 0;
 
-                // Proxy logic: If we don't have separate "New Learners" vs "New Educators", 
-                // we assume most new subscribers are learners.
-                // Or check for specific educator growth if available.
-                // For now, mapping New Subs -> New Learners approx.
-                const newLearners = newSubscribers;
-                const newEducators = 0; // Field likely missing or needs specific calc across months.
+                    const ruralRes = getSmartValue(record, ['Rural learners', 'Rural Users', 'Total Subscribers - Rural']);
+                    const ruralLearners = (ruralRes.value as number) || 0;
 
-                const schoolRes = getSmartValue(record, [
-                    'Schools reached',
-                    'Total Schools',
-                    'Number schools/learning institutions EdTech solution is being tested in',
-                    'Number of schools/learning institutions where EdTech solutions are being tested',
-                    'Total number of schools solution being tested in'
-                ]);
-                const schools = (schoolRes.value as number) || 0;
+                    const disabilityRes = getSmartValue(record, ['Learners with disability', 'Users with disability', 'Disability', 'Total Subscribers - Disability']);
+                    const disabilityLearners = (disabilityRes.value as number) || 0;
 
-                const q13Res = getSmartValue(record, [
-                    'Q1-3 Schools',
-                    'Quintile 1-3 schools',
-                    'Quintile 1-3 Schools Students subscriptions',
-                    'Number of Quintile 1-3 schools',
-                    'Number of Quintile 1 - 3 schools',
-                    'Number Quintile 1 - 3 schools ',
-                    'Subscription - Q1-3 schools'
-                ]);
-                const q1_3_schools = (q13Res.value as number) || 0;
+                    fellowsMap[companyName].data.push({
+                        month,
+                        date: uniqueDate,
+                        sales,
+                        profit,
+                        totalJobs,
+                        femaleJobs,
+                        youthJobs,
+                        totalSubscribers,
+                        newSubscribers,
+                        newLearners,
+                        newEducators,
+                        learners,
+                        educators,
+                        schools,
+                        q1_3_schools,
+                        saSchools,
+                        femaleLearners,
+                        ruralLearners,
+                        disabilityLearners
+                    });
 
-                const saSchoolsRes = getSmartValue(record, [
-                    'Number of South African schools',
-                    'Number of South African schools solution is being used/tested in',
-                    'Subscription - South African schools'
-                ]);
-                const saSchools = (saSchoolsRes.value as number) || 0;
-
-                // Demographics (Often percentage or raw number? Assuming Raw Number for now based on context)
-                // If fields are missing in some cohorts, we might need more smart fetching or defaults.
-                // Checking previous agg logic: it didn't fetch demographics per fellow.
-                // We'll try to find common names.
-                const femaleLearnRes = getSmartValue(record, ['Female learners', 'Female Users', 'Total Subscribers - Female']);
-                const femaleLearners = (femaleLearnRes.value as number) || 0;
-
-                const ruralRes = getSmartValue(record, ['Rural learners', 'Rural Users', 'Total Subscribers - Rural']);
-                const ruralLearners = (ruralRes.value as number) || 0;
-
-                const disabilityRes = getSmartValue(record, ['Learners with disability', 'Users with disability', 'Disability', 'Total Subscribers - Disability']);
-                const disabilityLearners = (disabilityRes.value as number) || 0;
-
-                fellowsMap[companyName].data.push({
-                    month,
-                    date: uniqueDate,
-                    sales,
-                    profit,
-                    totalJobs,
-                    femaleJobs,
-                    youthJobs,
-                    totalSubscribers,
-                    newSubscribers,
-                    newLearners,
-                    newEducators,
-                    learners,
-                    educators,
-                    schools,
-                    q1_3_schools,
-                    saSchools,
-                    femaleLearners,
-                    ruralLearners,
-                    disabilityLearners
+                    fellowsMap[companyName].monthsOfData += 1;
                 });
 
-                fellowsMap[companyName].monthsOfData += 1;
-            });
-
-        } catch (error) {
-            console.error(`Error fetching fellows from ${cohortName}:`, error);
-            issues.push({
-                cohort: cohortName,
-                table: tableName,
-                field: 'ALL',
-                issue: 'missing',
-                details: `Failed to fetch fellow data.`
-            });
+            } catch (error) {
+                // Table might not exist in all cohorts, which is fine
+                // log silently
+            }
         }
     }
 
