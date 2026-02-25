@@ -277,22 +277,34 @@ export const CohortView: React.FC<CohortViewProps> = ({ cohortName }) => {
                     <table className="w-full text-sm text-left">
                         <thead className="bg-gray-50 text-gray-600 font-bold border-b">
                             <tr>
-                                <th className="p-4">Fellow Name</th>
-                                <th className="p-4 text-right">Rand Value</th>
-                                <th className="p-4">Investor Name</th>
-                                <th className="p-4">Month</th>
+                                <th className="p-4 uppercase">Fellow Name</th>
+                                <th className="p-4 text-right uppercase">Total Sales</th>
+                                <th className="p-4 text-right uppercase">Net Profit</th>
+                                <th className="p-4 text-right uppercase">Investment Value</th>
+                                <th className="p-4 uppercase">Investor Name</th>
+                                <th className="p-4 uppercase">Month</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
-                            {investments.length > 0 ? investments.map((inv, i) => (
-                                <tr key={i} className="hover:bg-gray-50">
-                                    <td className="p-4 font-medium">{inv.fellowName}</td>
-                                    <td className="p-4 text-right text-emerald-600 font-semibold">{formatCurrency(inv.amount)}</td>
-                                    <td className="p-4">{inv.investor}</td>
-                                    <td className="p-4">{inv.monthSecured}</td>
-                                </tr>
-                            )) : (
-                                <tr><td colSpan={4} className="p-4 text-center text-gray-500">No investments recorded</td></tr>
+                            {investments.length > 0 ? investments.map((inv, i) => {
+                                const fellowMatched = fellows.find(f => f.companyName === inv.fellowName);
+                                const totalSales = fellowMatched ? fellowMatched.data.reduce((s, d) => s + (d.sales || 0), 0) : 0;
+                                const netProfit = fellowMatched ? fellowMatched.data.reduce((s, d) => s + (d.profit || 0), 0) : 0;
+
+                                return (
+                                    <tr key={i} className="hover:bg-gray-50">
+                                        <td className="p-4 font-medium">{inv.fellowName}</td>
+                                        <td className="p-4 text-right font-mono text-gray-700">{formatCurrency(totalSales)}</td>
+                                        <td className={`p-4 text-right font-mono font-semibold ${netProfit < 0 ? 'text-red-500' : 'text-emerald-600'}`}>
+                                            {formatCurrency(netProfit)}
+                                        </td>
+                                        <td className="p-4 text-right text-indigo-600 font-mono font-bold">{formatCurrency(inv.amount)}</td>
+                                        <td className="p-4">{inv.investor}</td>
+                                        <td className="p-4">{inv.monthSecured}</td>
+                                    </tr>
+                                );
+                            }) : (
+                                <tr><td colSpan={6} className="p-4 text-center text-gray-500">No investments recorded</td></tr>
                             )}
                         </tbody>
                     </table>
