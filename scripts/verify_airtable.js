@@ -37,17 +37,27 @@ if (!API_KEY || !BASE_ID_1) {
 Airtable.configure({ apiKey: API_KEY });
 const base = Airtable.base(BASE_ID_1);
 
-async function checkTable(tableName) {
+async function checkTable(tableName, limit = 1) {
     try {
-        console.log(`Checking table: "${tableName}"...`);
-        const records = await base(tableName).select({ maxRecords: 1 }).firstPage();
+        console.log(`\nChecking table: "${tableName}"...`);
+        const records = await base(tableName).select({ maxRecords: limit }).firstPage();
         console.log(`✅ Success! Table "${tableName}" is accessible. Found ${records.length} records.`);
         if (records.length > 0) {
-            console.log('   Sample fields:', Object.keys(records[0].fields).join(', '));
+            records.forEach((r, i) => {
+                console.log(`\n--- Record ${i + 1} Fields ---`);
+                const filteredObj = {};
+                for (let key in r.fields) {
+                    if (key.toLowerCase().includes('school') || key.toLowerCase().includes('rural') || key.toLowerCase().includes('female') || key.toLowerCase().includes('disability')) {
+                        filteredObj[key] = r.fields[key];
+                    }
+                }
+                console.log("Found Matching Detailed Fields:", filteredObj);
+                console.log("All raw keys:", Object.keys(r.fields).join(', '));
+            });
         }
     } catch (error) {
         if (error.error === 'NOT_FOUND') {
-            console.error(`❌ Table "${tableName}" NOT FOUND. Please check the table name in your Airtable Base.`);
+            console.error(`❌ Table "${tableName}" NOT FOUND.`);
         } else {
             console.error(`❌ Error accessing "${tableName}":`, error.message || error);
         }
@@ -55,9 +65,9 @@ async function checkTable(tableName) {
 }
 
 async function run() {
-    for (const table of TABLES) {
-        await checkTable(table);
-    }
+    await checkTable('Monthly reporting', 10);
+    await checkTable('Needs Assessment', 10);
+    await checkTable('Post Program Reporting', 10);
 }
 
 run();

@@ -163,7 +163,13 @@ export const fetchDashboardData = async (useMock = false): Promise<DashboardData
                         const newSubRes = getSmartValue(record, ['Net new monthly subscribers  - students', 'New Monthly Subscribers - Students']);
                         aggData[month].newSubscribers += (newSubRes.value as number) || 0;
 
-                        const learnRes = getSmartValue(record, ['Active users Students - Broad Definition', 'Monthly Active users - Students', 'Monthly Active users - Students ']);
+                        const learnRes = getSmartValue(record, [
+                            'Active users Students - Broad Definition',
+                            'Monthly Active users - Students',
+                            'Monthly active users- Students',
+                            'Monthly Active users - Students ',
+                            'Active student users. - Broad'
+                        ]);
                         aggData[month].learners += (learnRes.value as number) || 0;
                     }
                 });
@@ -388,6 +394,7 @@ export const fetchFellowsData = async (useMock = false): Promise<{ fellows: Fell
                 const schoolRes = getSmartValue(record, [
                     'Schools reached',
                     'Total Schools',
+                    'Number schools/learning institutions EdTech solution is being tested in',
                     'Number of schools/learning institutions where EdTech solutions are being tested'
                 ]);
                 const schools = (schoolRes.value as number) || 0;
@@ -396,7 +403,8 @@ export const fetchFellowsData = async (useMock = false): Promise<{ fellows: Fell
                     'Q1-3 Schools',
                     'Quintile 1-3 schools',
                     'Quintile 1-3 Schools Students subscriptions',
-                    'Number of Quintile 1-3 schools'
+                    'Number of Quintile 1-3 schools',
+                    'Number of Quintile 1 - 3 schools'
                 ]);
                 const q1_3_schools = (q13Res.value as number) || 0;
 
